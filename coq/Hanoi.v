@@ -329,3 +329,57 @@ Proof.
   simpl.
   auto.
 Qed. 
+
+Fixpoint pow (n m: nat) {struct m} :=
+match m with
+| O => 1
+| S r => 2 * pow n r
+end.
+
+Inductive diff_largest (t s: tower) : Prop :=
+diff_largest_c (t' s': tower) (p q: pos):
+  t = add_disk t' p ->
+  s = add_disk s' q -> p <> q -> diff_largest t s.
+
+Definition move_largest (t: tower) (m: move) : Prop :=
+   diff_largest t (make_move t m).
+(*
+Definition from_of_move (m: move) :=
+match m with from_to f t => f end.
+
+Definition to_of_move (m: move) :=
+match m with from_to f t => t end.
+
+Definition rest_of_move (m: move) :=
+match m with
+| from_to pos1 pos2 => pos3
+| from_to pos1 pos3 => pos2
+| from_to pos2 pos1 => pos3
+| from_to pos2 pos3 => pos1
+| from_to pos3 pos1 => pos2
+| from_to pos3 pos2 => pos1
+| _ => pos1
+end.
+*)
+Lemma move_large_impl_single: forall (t: tower) (from to rest: pos),
+  from <> to -> from <> rest -> to <> rest ->
+  legal_move (add_disk t from) (from_to from to) ->
+  move_largest (add_disk t from) (from_to from to) ->
+    single_tower t rest.
+Proof.
+  unfold add_disk, legal_move.
+  intros t from to rest.
+  replace (rev (from::t)) with (rev t ++ from::nil) by auto.
+  intros.
+  inversion H3.
+
+Theorem hanoi_2: forall (n:nat) (t: tower) (from to rest: pos),
+  from <> to -> from <> rest -> to <> rest ->
+  length t = n ->
+  single_tower t from ->
+  legal_moves (answer n from to rest) t ->
+  single_tower (make_moves (answer n from to rest) t) to ->
+  length (answer n from to rest) = pow 2 n - 1.
+
+
+
