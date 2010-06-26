@@ -115,9 +115,12 @@ def mirror_attach(url)
   url =~ /&refer=([^&]+)/
   ref = URI.unescape($1).to_H
   dref = URI.unescape($1).to_u8
+  url =~ /&age=([^&]+)/
+  age = $1
   $stderr.puts "ATTACH: #{dref} #{dfile}"
   body = fetch(url)
-  open(DST_DIR + "/attach/#{ref}_#{file}", "w") {|f|
+  name = DST_DIR + "/attach/#{ref}_#{file}" + (age ? "." + age : "")
+  open(name, "w") {|f|
     f.write(body)
   }
 end
@@ -138,4 +141,6 @@ atts.each {|url|
   mirror_attach(url)
 }
 
-
+system("rm -f current")
+system("ln -sf #{DST_DIR} current")
+system("tar -zcf archive/#{DST_DIR}.tar.gz #{DST_DIR}")
