@@ -28,108 +28,103 @@ end.
 Definition ntarai3v (n : nat) (av bv cv : Z):=
 ntarai3 n (Some av) (Some bv) (Some cv). 
 
-Inductive Tarai_value (n: nat) (a b c: option Z) (v: Z) : Prop :=
-| Tarai_a_le_b (av bv: Z)
-     (Hle: av <= bv) (Hv: bv = v) (Ha: a = Some av) (Hb: b = Some bv): Tarai_value n a b c v
-| Tarai_a_gt_b_1 (av bv cv: Z) (n': nat) (Hgt: av > bv)
-     (Ha: a = Some av) (Hb: b = Some bv) (Hc: c = Some cv)
-     (Hn: n = S n')
-     (v1: Z)
-     (Hle2: v1 <= v)
-     (Hrec1: Tarai_value n' (Some (av-1)) b c v1)
-     (Hrec2: Tarai_value n' (Some (bv-1)) c a v)
-| Tarai_a_gt_b_2 (av bv cv: Z) (n': nat) (Hgt: av > bv)
-     (Ha: a = Some av) (Hb: b = Some bv) (Hc: c = Some cv)
-     (Hn: n = S n')
-     (v1 v2 v3: Z)
+Inductive Tarai_value:
+     nat -> option Z -> option Z -> option Z -> Z -> Prop :=
+| Tarai_a_le_b n (av bv: Z) c (Hle: av <= bv):
+     Tarai_value n (Some av) (Some bv) c bv
+| Tarai_a_gt_b_1 n (av bv cv: Z) (v1 v2: Z)
+     (Hgt: av > bv)
+     (Hle2: v1 <= v2)
+     (Hrec1: Tarai_value n (Some (av-1)) (Some bv) (Some cv) v1)
+     (Hrec2: Tarai_value n (Some (bv-1)) (Some cv) (Some av) v2):
+     Tarai_value (S n) (Some av) (Some bv) (Some cv) v2
+| Tarai_a_gt_b_2 n (av bv cv: Z) (v1 v2 v3 v4: Z)
+     (Hgt: av > bv)
      (Hle2: ~v1 <= v2)
-     (Hrec1: Tarai_value n' (Some (av-1)) b c v1)
-     (Hrec2: Tarai_value n' (Some (bv-1)) c a v2)
-     (Hrec3: Tarai_value n' (Some (cv-1)) a b v3)
-     (Hrec4: Tarai_value n' (Some v1)
+     (Hrec1: Tarai_value n (Some (av-1)) (Some bv) (Some cv) v1)
+     (Hrec2: Tarai_value n (Some (bv-1)) (Some cv) (Some av) v2)
+     (Hrec3: Tarai_value n (Some (cv-1)) (Some av) (Some bv) v3)
+     (Hrec4: Tarai_value n (Some v1)
                                    (Some v2)
-                                   (Some v3) v): Tarai_value n a b c v.
+                                   (Some v3) v4):
+    Tarai_value (S n) (Some av) (Some bv) (Some cv) v4.
 
-Lemma lem_saficient:
+Lemma lem_safficiency:
   forall n a b c v, Tarai_value n a b c v -> ntarai3 n a b c = Some v.
 Proof.
   intros.
-  unfold ntarai3.
-  induction H;
+  induction H.
     destruct n;
-    rewrite Ha;
-    rewrite Hb;
-    destruct (Z_le_dec av bv); try congruence; try contradiction.
-  fold ntarai3 in * |- *.
-  rewrite Hc.
-  inversion Hn.
-  rewrite <- Ha. rewrite <- Hb. rewrite <- Hc.
-  rewrite (IHTarai_value1).
-  rewrite (IHTarai_value2).
-  destruct n'; simpl; destruct (Z_le_dec v1 v); auto; contradiction.
-  fold ntarai3 in * |- *.
-  rewrite Hc.
-  congruence.
+    simpl;
+    destruct (Z_le_dec av bv); auto; try contradiction.
+
+    simpl.
+    rewrite IHTarai_value1.
+    rewrite IHTarai_value2.
+    destruct (Z_le_dec av bv).
+    absurd (av > bv); omega.
+    destruct n; simpl; destruct (Z_le_dec v1 v2); auto; contradiction.
+
+    simpl.    
+    rewrite IHTarai_value1.
+    rewrite IHTarai_value2.
+    rewrite IHTarai_value3.
+    rewrite IHTarai_value4.
+    destruct (Z_le_dec av bv); auto; contradiction.
 Qed.
 
-Lemma lem_invert:
+Lemma lem_necessity:
   forall n a b c v, ntarai3 n a b c = Some v -> Tarai_value n a b c v.
 Proof.
-  unfold ntarai3.
   induction n.
   intros.
+  simpl in H.
   destruct a as [av|]; [|congruence].
   destruct b as [bv|]; [|congruence].
   destruct (Z_le_dec av bv).
-  apply Tarai_a_le_b with av bv; auto. congruence.
-  inversion H.  
+  inversion H.
+  apply Tarai_a_le_b.
+  congruence.
+  inversion H.
+  simpl.
   destruct a as [av|]; [|congruence].
   destruct b as [bv|]; [|congruence].
   destruct (Z_le_dec av bv).
   intros.
-  apply Tarai_a_le_b with av bv; auto. congruence.
-  intros.
+  inversion H.
+  apply Tarai_a_le_b.
+  congruence.
   destruct c as [cv|]; [|congruence].
-  fold ntarai3 in * |- *.
-  generalize (Tarai_a_gt_b_1 (S n) (Some av) (Some bv) (Some cv) v av bv cv n).
-  generalize (Tarai_a_gt_b_2 (S n) (Some av) (Some bv) (Some cv) v av bv cv n).
+  intros.
   generalize (IHn (Some (av - 1)) (Some bv) (Some cv)).
   generalize (IHn (Some (bv - 1)) (Some cv) (Some av)).
   generalize (IHn (Some (cv - 1)) (Some av) (Some bv)).
   intros.
   destruct n.
-  destruct (ntarai3 0 (Some (av - 1)) (Some bv) (Some cv)) as [v1|].
-  destruct (ntarai3 0 (Some (bv - 1)) (Some cv) (Some av)) as [v2|].
+  destruct (ntarai3 0 (Some (av - 1)) (Some bv) (Some cv)) as [v1|]; [| inversion H].
+  destruct (ntarai3 0 (Some (bv - 1)) (Some cv) (Some av)) as [v2|]; [| inversion H].
   simpl in H.
   destruct (Z_le_dec v1 v2).
-  apply H4 with v1; auto.
+  apply Tarai_a_gt_b_1 with v1; auto.
   omega.
   congruence.
-  congruence.
   inversion H.
-  inversion H.
-  destruct (ntarai3 (S n) (Some (av - 1)) (Some bv) (Some cv)) as [v1|].
-  destruct (ntarai3 (S n) (Some (bv - 1)) (Some cv) (Some av)) as [v2|].
+  destruct (ntarai3 (S n) (Some (av - 1)) (Some bv) (Some cv)) as [v1|]; [| inversion H].
+  destruct (ntarai3 (S n) (Some (bv - 1)) (Some cv) (Some av)) as [v2|]; [| inversion H].
   destruct (ntarai3 (S n) (Some (cv - 1)) (Some av) (Some bv)) as [v3|].
+  generalize (IHn (Some v1) (Some v2) (Some v3) v H).
+  intro.
   simpl in H.
   destruct (Z_le_dec v1 v2).
-  apply H4 with v1; auto.
+  apply Tarai_a_gt_b_1 with v1; auto.
   omega.
   congruence.
-  apply H3 with v1 v2 v3; auto.
+  apply Tarai_a_gt_b_2 with v1 v2 v3; auto.
   omega.
-  apply IHn.
-  simpl.
-  destruct (Z_le_dec v1 v2).
-  contradiction.
-  auto.
   simpl in H.
   destruct (Z_le_dec v1 v2).
-  apply H4 with v1; auto.
-  omega.
-  congruence.
-  inversion H.
-  inversion H.
+  apply Tarai_a_gt_b_1 with v1; auto.
+  omega. congruence.
   inversion H.
 Qed.
 
@@ -138,19 +133,15 @@ Lemma lem_n_indep : forall n m a b c v,
 Proof.
   induction n.
   intros.
-  destruct H.
-     apply Tarai_a_le_b with av bv; auto.
-     inversion Hn.
-     inversion Hn.
+  inversion H.
+  apply Tarai_a_le_b; auto.
   intros.
-  destruct H.
-     apply Tarai_a_le_b with av bv; auto.
-     inversion Hn. rewrite <- H2 in * |- *.
+  inversion H.
+     apply Tarai_a_le_b; auto.
      replace (S n + m)%nat with (S (n + m)) by auto.
-     apply Tarai_a_gt_b_1 with av bv cv (n + m)%nat v1; auto.
-     inversion Hn. rewrite <- H4 in * |- *.
+     apply Tarai_a_gt_b_1 with v1; auto.
      replace (S n + m)%nat with (S (n + m)) by auto.
-     apply Tarai_a_gt_b_2 with av bv cv (n + m)%nat v1 v2 v3; auto.
+     apply Tarai_a_gt_b_2 with v1 v2 v3; auto.
 Qed.
 
 Lemma lem1_a_gt_b_le_c : forall bv cv m, bv <= cv ->
@@ -161,29 +152,26 @@ Proof.
   exists 1%nat.
   replace (Z_of_nat 1) with 1 by auto.
 
-  apply Tarai_a_gt_b_1 with (bv + 1) bv cv 0%nat bv; auto.
+  apply Tarai_a_gt_b_1 with bv; auto.
   omega.
-  apply Tarai_a_le_b with (bv + 1 - 1) bv; auto.
-  omega.
-  apply Tarai_a_le_b with (bv - 1) cv; auto.
-  omega.
+  apply Tarai_a_le_b; omega.
+  apply Tarai_a_le_b; omega.
 
   intros.
   destruct (IHm H) as [n' Hn'].
   exists (S n').
 
-  apply Tarai_a_gt_b_1 with (bv + Z_of_nat (S (S m))) bv cv n' cv; auto.
+  apply Tarai_a_gt_b_1 with cv; auto.
   rewrite inj_S. omega.
   omega.
   rewrite inj_S.
   replace (bv + Zsucc (Z_of_nat (S m)) - 1) with (bv + Z_of_nat (S m)) by omega.
   auto.
 
-  apply Tarai_a_le_b with (bv - 1) cv; auto.
-  omega.
+  apply Tarai_a_le_b; omega.
 Qed. 
 
-Lemma lem_a_gt_b_le_c : forall av bv cv,  av>bv -> bv<=cv -> 
+Lemma lem_a_gt_b_le_c : forall av bv cv,  av > bv -> bv <= cv -> 
   exists n : nat, Tarai_value n (Some av) (Some bv) (Some cv) cv.
 Proof.
   intros. 
@@ -198,8 +186,8 @@ Proof.
   auto using lem1_a_gt_b_le_c. 
 Qed. 
 
-Lemma lem1_a_gt_b_gt_c : forall bv cv,  bv > cv ->
-  forall m,  exists n, Tarai_value n (Some (bv + Z_of_nat (S m))) (Some bv) (Some cv) (bv + Z_of_nat (S m)).
+Lemma lem1_a_gt_b_gt_c : forall bv cv,  bv > cv -> forall m,
+  exists n, Tarai_value n (Some (bv + Z_of_nat (S m))) (Some bv) (Some cv) (bv + Z_of_nat (S m)).
 Proof.
   induction m.
   replace (Z_of_nat 1) with 1 by auto.
@@ -208,16 +196,16 @@ Proof.
   destruct (lem_a_gt_b_le_c bv cv (bv+1)) as [n0 ?]; try omega.
   exists (S n0).
 
-  apply Tarai_a_gt_b_2 with (bv + 1) bv cv n0 bv cv (bv + 1); auto.
+  apply Tarai_a_gt_b_2 with bv cv (bv + 1); auto.
   omega.
-  apply Tarai_a_le_b with (bv + 1 - 1) bv; auto; omega.
-  apply Tarai_a_le_b with (bv - 1) cv; auto; omega.
-  apply Tarai_a_le_b with (cv - 1) (bv + 1); auto; omega.
+  apply Tarai_a_le_b; omega.
+  apply Tarai_a_le_b; omega.
+  apply Tarai_a_le_b; omega.
 
   destruct (lem_a_gt_b_le_c (bv - 1) cv (bv + 1)) as [n0 ?]; try omega.
   exists (S n0).
-  apply Tarai_a_gt_b_1 with (bv + 1) bv cv n0 bv; auto; try omega.
-  apply Tarai_a_le_b with (bv + 1 - 1) bv; auto; omega.
+  apply Tarai_a_gt_b_1 with bv; auto; try omega.
+  apply Tarai_a_le_b; omega.
 
   destruct IHm as [n0 ?].
 
@@ -228,38 +216,28 @@ Proof.
   destruct (lem_a_gt_b_le_c (bv + Z_of_nat (S m)) cv (bv + Z_of_nat (S m) + 1)) as [n1 ?]; try omega.
 
   exists (S (n0 + n1)).
-  apply Tarai_a_gt_b_2 with (bv + Z_of_nat (S m) + 1) bv cv (n0 + n1)%nat
-                                    (bv + Z_of_nat (S m)) cv  (bv + Z_of_nat (S m) + 1); auto.
-  omega. omega.
-
+  apply Tarai_a_gt_b_2 with (bv + Z_of_nat (S m)) cv  (bv + Z_of_nat (S m) + 1); auto; try omega.
   apply lem_n_indep.
   replace (bv + Z_of_nat (S m) + 1 - 1) with (bv + Z_of_nat (S m)) by omega.
   auto.
-  apply Tarai_a_le_b with (bv - 1) cv; auto.
-  apply Tarai_a_le_b with (cv -1) (bv + Z_of_nat (S m) + 1); auto.
-  omega.
-
+  apply Tarai_a_le_b; auto.
+  apply Tarai_a_le_b; omega.
   replace (n0 + n1)%nat with (n1 + n0)%nat by omega.
   apply lem_n_indep.
   auto.
 
   destruct (lem_a_gt_b_le_c (bv - 1) cv (bv + Z_of_nat (S m) + 1)) as [n1 ?]; try omega.
-
   exists (S (n0 + n1)).
-  apply Tarai_a_gt_b_1 with (bv + Z_of_nat (S m) + 1) bv cv (n0 + n1)%nat
-                                    (bv + Z_of_nat (S m)); auto.
-  omega. omega.
+  apply Tarai_a_gt_b_1 with (bv + Z_of_nat (S m)); auto; try omega.
   apply lem_n_indep.
   replace (bv + Z_of_nat (S m) + 1 - 1) with (bv + Z_of_nat (S m)) by omega.
   auto.
-
   replace (n0 + n1)%nat with (n1 + n0)%nat by omega.
-  apply lem_n_indep.
-  auto.
+  auto using lem_n_indep.
 Qed. 
 
-Lemma lem_a_gt_b_gt_c : forall av bv cv, av>bv -> bv>cv -> 
-   exists n ,  Tarai_value n (Some av) (Some bv) (Some cv) av.
+Lemma lem_a_gt_b_gt_c : forall av bv cv, av > bv -> bv > cv -> 
+   exists n , Tarai_value n (Some av) (Some bv) (Some cv) av.
 Proof. 
   intros. 
   assert (exists d: nat, av - 1 - bv=Z_of_nat d). 
@@ -277,19 +255,15 @@ Theorem tarai3_terminates : forall av bv cv,
   exists n, exists v, Tarai_value n (Some av) (Some bv) (Some cv) v. 
 Proof.
   intros.
-  assert (forall x y, x <= y \/ x > y).
-  intros. omega.
+  assert (av <= bv \/ av > bv /\ bv <= cv \/ av > bv /\ bv > cv) by omega.
+  destruct H as [?|[?|?]].
  
-  destruct (H av bv).
-  exists 0%nat. exists bv.
-  apply Tarai_a_le_b with av bv; auto.
+ exists 0%nat. exists bv.
+  apply Tarai_a_le_b; auto.
 
-  destruct (H bv cv).
-  generalize (lem_a_gt_b_le_c av bv cv H0 H1).
-  intros [n0 ?].
+  destruct (lem_a_gt_b_le_c av bv cv) as [n0 ?]; try tauto.
   exists n0. exists cv. auto.
 
-  generalize (lem_a_gt_b_gt_c av bv cv H0 H1).
-  intros [n0 ?].
+  destruct (lem_a_gt_b_gt_c av bv cv) as [n0 ?]; try tauto.
   exists n0. exists av. auto.
 Qed.
