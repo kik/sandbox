@@ -9,13 +9,14 @@ Open Scope Z_scope.
 Inductive Le : dZ -> dZ -> Prop :=
 | LE x y: x <= y -> Le (V x) (V y).
 
-Definition Vz := @V Z.
+Definition mapV := map (@V Z).
+Definition mapB {A} : list A -> VdZ := map (fun _ => B).
 
 Inductive Tarai_X (k: nat) : VdZ -> Z -> Prop :=
 | TX head x tail
   (Hmax: forall i y, In_n i y head -> y <= x)
   (Hlen: length head = k):
-  Tarai_X k (map Vz head ++ (V x)::tail) x.
+  Tarai_X k (mapV head ++ (V x)::tail) x.
 
 Inductive Tarai_Y (n: nat) (k: nat) : VdZ -> Z -> Prop :=
 | TY head x tail v
@@ -28,7 +29,7 @@ Open Scope nat_scope.
 
 Lemma remove_V: forall v,
    (forall i y, In_n i y v -> y <> B) ->
-   exists v', map Vz v' = v.
+   exists v', mapV v' = v.
 Proof.
    induction v.
    exists nil.
@@ -83,7 +84,9 @@ Proof.
    apply In_n_map_2. auto.
    inversion H7. auto.
    rewrite <- H1.
-   rewrite <- (map_length Vz v').
+   rewrite <- H4.
+   unfold mapV.
+   rewrite map_length.
    congruence.
 Qed.
 
@@ -96,7 +99,7 @@ Section X_functions.
     destruct head.
     inversion Hlen.
     simpl.
-    replace (V (z-1)::map Vz head++V x::tail) with (map Vz (z-1::head)++V x::tail) by auto.
+    replace (V (z-1)::mapV head++V x::tail) with (mapV (z-1::head)++V x::tail) by auto.
     apply (TX (S k) (z-1::head) x tail).
     intros.
     destruct i; simpl in H.
@@ -193,6 +196,7 @@ Section Length.
     destruct H.
     rewrite (app_length).
     simpl.
+    unfold mapV.
     rewrite map_length.
     omega.
   Qed.
@@ -212,12 +216,48 @@ Proof.
   auto.
 Qed.
 
+Lemma Y_contin: forall n k v v' x,
+  Tarai_Y n k v x -> VdZ_le v v' -> Tarai_Y n k v' x.
+Proof.
+  intros.
+  generalize (ntarai_continuous n v v' H0).
+  intros.
+  inversion H.
+    destruct (VdZ_split head (V x0::tail) v') as [head' [t ?]].
+    rewrite <- H2 in H0. auto.
+    destruct H4. destruct H5.
+    destruct t as [|x2 tail'].
+    inversion H6.
+    inversion H6.
+    rewrite <- H4. inversion H10.
+    rewrite H3.
+    apply (TY n k head' x tail' v0).
+    rewrite <- H2 in H1.
+    rewrite H3 in H1.
+    rewrite Hterm in H1.
+    inversion H1.
+    rewrite H17.
+    rewrite <- H4.
+    rewrite <- H14.
+    rewrite H3.
+    auto.
+    auto.
+    generalize (VdZ_le_length head head' H5).
+    intro.
+    rewrite <- Hlen.
+    auto.
+  Qed.
+
 Section X_Y.
   Open Scope nat_scope.
   Variable n: nat.
+  Variable w: VdZ.
+  Variable x: Z.
+  Variable HX: Tarai_X (S n) w x.
   Variable IHn: forall m,
     m < n -> forall v x, Tarai_X (S m) v x ->
     exists n : nat, Tarai_Y n (S m) v x.
+  Variable IHsigma: exists r, exists y, (y <= x)%Z /\ ntarai r (sigma w) = V y%Z.
 
   Lemma ntarai_make_aux_Y: forall n' m k w v x,
     m < n ->
@@ -227,43 +267,38 @@ Section X_Y.
     Tarai_X (S m) v x /\ Tarai_Y r (S m) v x.
   Proof.
     intros.
-    assert (Tarai_X (S m) v x).
-    apply ntarai_make_aux_X with n' k w; auto.
-    destruct (IHn m H v x H2) as [r ?].
+    assert (Tarai_X (S m) v x0).
+    apply ntarai_make_aux_X with n' k w0; auto.
+    destruct (IHn m H v x0 H2) as [r ?].
     exists r.
     auto.
   Qed.
 
-  Variable w: VdZ.
-  Variable x: Z.
-  Variable HX: Tarai_X n w x.
-  Variable IHsigma: exists r, Tarai_Y r n (sigma w) (x - 1)%Z.
-
   Lemma ntarai_make_Y_aux: forall k v,
-    1 <= k < n ->
+    1 <= k <= n ->
     In_n k v (ntarai_make w) ->
     exists r,
-    Tarai_X (n - k) v x /\ Tarai_Y r (n - k) v x.
+    Tarai_X (S n - k) v x /\ Tarai_Y r (S n - k) v x.
   Proof.
     intros.
-    replace (n - k) with (S (n - k - 1)) by omega.
+    replace (S n - k) with (S (S n - k - 1)) by omega.
     apply ntarai_make_aux_Y with (length w) k w.
     omega.
     auto.
-    replace (n - k - 1 + k + 1) with n by omega.
+    replace (S n - k - 1 + k + 1) with (S n) by omega.
     apply HX.
   Qed.
 
   Lemma ntarai_make_Y: exists r, forall k v,
-      1 <= k < n ->
+      1 <= k <= n ->
       In_n k v (ntarai_make w) ->
-     Tarai_X (n - k) v x /\ Tarai_Y r (n - k) v x.
+     Tarai_X (S n - k) v x /\ Tarai_Y r (S n - k) v x.
   Proof.
      intros.
-     generalize (X_length n w x HX).
+     generalize (X_length (S n) w x HX).
      intros.
-     generalize (take_max n (fun k r => k < 1 \/ forall v, In_n k v (ntarai_make w) ->
-                                       Tarai_X (n - k) v x /\ Tarai_Y r (n - k) v x)).
+     generalize (take_max (S n) (fun k r => k < 1 \/ forall v, In_n k v (ntarai_make w) ->
+                                       Tarai_X (S n - k) v x /\ Tarai_Y r (S n - k) v x)).
      intros.
      destruct H0.
      intros.
@@ -296,12 +331,12 @@ Section X_Y.
   Qed.
 
   Lemma ntarai_map_Y: exists r, forall r' k v,
-      1 < n ->
-      k < n -> r <= r' ->
-      In_n k v (map (ntarai r') (ntarai_make w)) -> Le v  (V x) /\ (k+1 = n -> v = (V x)).
+      0 < n ->
+      k <= n -> r <= r' ->
+      In_n k v (map (ntarai r') (ntarai_make w)) -> Le v  (V x) /\ (k+1 = S n -> v = (V x)).
   Proof.
      intros.
-     generalize (X_length n w x HX).
+     generalize (X_length (S n) w x HX).
      intros.
      destruct ntarai_make_Y as [r ?]; auto.
      destruct IHsigma as [r0 ?].
@@ -313,23 +348,27 @@ Section X_Y.
      destruct k.
         assert (ntarai r' v' = v).
         apply In_n_map with 0 (ntarai_make w); auto.
+        destruct H1.
+        destruct H1.
         unfold ntarai_make in H6.
         replace (length w) with (S (length w - 1)) in H6 by omega.
         simpl in H6.
-        rewrite <- H6 in H1.
+        constructor.
+        rewrite <- H6 in H8.
         assert (r0 <= r') by omega.
-        generalize (Y_indep r0 r' n v' (x - 1)%Z H8 H1).
+        generalize (ntarai_continuous_n r0 r' v' H9).
         intro.
-        inversion H9.
-        replace v with (V v0) by congruence.
-        constructor. constructor. omega.
-        intros.
-        apply False_ind. omega.
-     assert (1 <= (S k) < n) by omega.
+        rewrite H8 in H10.
+        rewrite H7 in H10.
+        inversion H10.
+        constructor.
+        omega.
+        intro. apply False_ind. omega.
+     assert (1 <= (S k) <=  n) by omega.
      specialize (H0 (S k) v' H7 H6).
      destruct H0.
      assert (r <= r') by omega.
-     generalize (Y_indep r r' (n - S k) v' x H9 H8).
+     generalize (Y_indep r r' (S n - S k) v' x H9 H8).
      intros.
      inversion H10.
      assert (VdZ_le tail tail) by auto with tarai.
@@ -346,7 +385,7 @@ Section X_Y.
      constructor. constructor.
      auto.
      intros.
-     assert (n - S k = 1) by omega.
+     assert (S n - S k = 1) by omega.
      rewrite H17 in * |- *.
      assert (ntarai 1 v' = V x).
      inversion H0.
@@ -369,21 +408,21 @@ Section X_Y.
   Qed.
 
   Lemma ntarai_map_X:
-    1 < n ->
+    0 < n ->
     exists r, forall r', r <= r' ->
-      Tarai_X (n-1) (map (ntarai r') (ntarai_make w)) x.
+      Tarai_X n (map (ntarai r') (ntarai_make w)) x.
   Proof.
     intros.
-    generalize (X_length n w x HX).
+    generalize (X_length (S n) w x HX).
     destruct ntarai_map_Y as [r0 ?].
     exists r0.
     intros.
     apply make_X.
-    destruct (In_n_exists (n-1) (map (ntarai r') (ntarai_make w))).
+    destruct (In_n_exists n (map (ntarai r') (ntarai_make w))).
     rewrite (map_length).
     rewrite (ntarai_make_length).
     omega.
-    destruct (H0 r' (n-1) x0).
+    destruct (H0 r' n x0).
     auto. omega. omega. auto. auto.
     rewrite <- H5.
     auto. omega.
@@ -392,83 +431,21 @@ Section X_Y.
     auto. omega. omega. auto. auto.
   Qed.     
 
-  Lemma VdZ_split: forall u v w, VdZ_le (u++v) w ->
-    exists u', exists v', u' ++ v' = w /\ VdZ_le u u' /\ VdZ_le v v'.
-  Proof.
-    induction u.
-    exists nil. exists w0.
-    simpl in * |- *.
-    auto with tarai.
-    intros.
-    destruct w0.
-    simpl in H. inversion H.
-    simpl in H. inversion H.
-    destruct (IHu  v w0) as [u' [v' ?]]; auto.
-    exists (d::u'). exists v'.
-    constructor; auto.
-    rewrite <- app_comm_cons.
-    destruct H6. congruence.
-    constructor.
-    constructor; auto. tauto. tauto.
-  Qed.
-
-  Lemma VdZ_le_length: forall v w, VdZ_le v w -> length v = length w.
-  Proof.
-    induction v.
-    intros.
-    inversion H.
-    auto.
-    intros.
-    inversion H.
-    simpl.
-    auto.
-  Qed.
-
-  Lemma Y_contin: forall n k v v' x,
-    Tarai_Y n k v x -> VdZ_le v v' -> Tarai_Y n k v' x.
-  Proof.
-    intros.
-    generalize (ntarai_continuous n0 v v' H0).
-    intros.
-    inversion H.
-    destruct (VdZ_split head (V x0::tail) v') as [head' [t ?]].
-    rewrite <- H3. rewrite <- H2 in H0. auto.
-    destruct H4. destruct H5.
-    destruct t as [|x2 tail'].
-    inversion H6.
-    inversion H6.
-    rewrite <- H4. inversion H10.
-    apply (TY n0 k head' x0 tail' v0).
-    rewrite <- H2 in H1.
-    rewrite H3 in H1.
-    rewrite Hterm in H1.
-    inversion H1.
-    rewrite H17.
-    rewrite <- H4.
-    rewrite <- H14.
-    auto.
-    auto.
-    generalize (VdZ_le_length head head' H5).
-    intro.
-    rewrite <- Hlen.
-    auto.
-  Qed.
-
   Lemma ntarai_Y:
-    1 < n ->
+    0 < n ->
     exists r,
-      Tarai_Y r (n-1) (map (ntarai r) (ntarai_make w)) x.
+      Tarai_Y r n (map (ntarai r) (ntarai_make w)) x.
   Proof.
     intros.
     destruct ntarai_map_X as [r0 ?].
     auto.
-    assert (n - 2 < n) by omega.
-    destruct (IHn (n - 2) H1 (map (ntarai r0) (ntarai_make w)) x) as [r1 ?].
-    replace (S (n - 2)) with (n - 1) by omega.
+    assert (n - 1 < n) by omega.
+    destruct (IHn (n - 1) H1 (map (ntarai r0) (ntarai_make w)) x) as [r1 ?].
+    replace (S (n - 1)) with n by omega.
     apply H0. omega.
     exists (r0 + r1).
     apply Y_indep with (r1). omega.
-    replace (S (n - 2)) with (n - 1) in H2 by omega.
+    replace (S (n - 1)) with n in H2 by omega.
     apply Y_contin with (map (ntarai r0) (ntarai_make w)); auto.
     apply map_fcontinuous.
     intro.
@@ -505,14 +482,14 @@ Proof.
   destruct (Z_le_dec x1 x2).
   exists 1%nat.
   simpl.
-  apply (TY 1 (S n) (V x1::V x2::map Vz head) x tail x2).
+  apply (TY 1 (S n) (V x1::V x2::mapV head) x tail x2).
   unfold ntarai.
   simpl.
   destruct (Z_le_dec x1 x2); [auto|contradiction].
   apply Hmax with 1%nat.
   simpl.
   auto.
-  simpl. rewrite map_length.
+  simpl. unfold mapV. rewrite map_length.
   simpl in Hlen. auto.
 
   assert (exists m : nat, x1 - x2 - 1 = Z_of_nat m). 
@@ -521,14 +498,87 @@ Proof.
   destruct H3 as [m ?].
   replace x1 with (x2 + 1 + Z_of_nat m)%Z in * |- * by omega.
   clear H3.
-
-  induction m. Focus 2.
-  simpl. replace (x1 + 1 + 0) with (x1 + 1) by omega.
-  Focus 2.
-  destruct n.
+  rewrite <- H1 in H0.
+  rewrite H2 in H0.
+  clear x1 H1 H2 n0.
+  induction m.
+  simpl in * |- *.
+  destruct (ntarai_Y n (V (x2 + 1 + 0)::V x2::mapV head++V x::tail) x) as [r ?].
+  auto.
+  intros.
+  apply H.
+  omega.
+  auto.
+  exists 1%nat.
+  simpl.
+  replace (x2+1+0-1) with x2 by omega.
+  exists x2.
+  constructor.
+  assert (x2 + 1 + 0 <= x).
+  apply Hmax with 0%nat.
+  simpl. auto. omega.
+  unfold ntarai. simpl.
+  destruct (Z_le_dec x2 x2). auto.
   apply False_ind. omega.
+  omega.
+  exists (S r).
+  inversion H1.
+  apply (TY (S r) (S n) (V (x2 + 1 + 0)::V x2::mapV head) x tail v0).
+  unfold ntarai.
+  simpl.
+  destruct (Z_le_dec (x2 + 1 + 0) x2).
+  apply False_ind. omega.
+  rewrite H2 in H3.
+  rewrite H3 in Hterm.
+  exact Hterm.
+  auto.
+  simpl.
+  unfold mapV.
+  rewrite map_length. auto.
 
-Lemma ntarai_map_X: forall n f v,
-  Tarai_X (S n) v ->
-  (forall k v, k < n -> Tarai_X k v -> exists r, Tarai_Y r k v) ->
-  Tarai_X n (map f (ntarai_make v)).
+  rewrite inj_S in * |- *.
+  replace (x2+1+Zsucc(Z_of_nat m)) with (x2 + 2 + Z_of_nat m) in *|-* by omega.
+  simpl.
+  destruct (ntarai_Y n (V (x2 + 2 + Z_of_nat m)::V x2::mapV head++V x::tail) x) as [r ?].
+  auto.
+  intros.
+  apply H.
+  auto. auto.
+  assert (forall i y, In_n i y (x2+1+Z_of_nat m::x2::head) -> y <= x).
+  intros.
+  destruct i.
+  assert (x2 + 2 + Z_of_nat m <= x).
+  apply Hmax with O. simpl. auto.
+  simpl in H1. omega.
+  apply Hmax with (S i).
+  exact H1.
+  destruct IHm as [r ?].
+  apply (TX (S n) (x2+1+Z_of_nat m::x2::head) x tail).
+  auto.
+  simpl in * |- *. auto.
+  auto.
+  exact Hlen.
+  inversion H2.
+  exists r. exists v0.
+  constructor. auto.
+  simpl.
+  replace (x2 +2 + Z_of_nat m - 1) with (x2 + 1 + Z_of_nat m) by omega.
+  congruence.
+  simpl in Hlen. omega.
+  exists (S r).
+
+  inversion H1.  
+  apply (TY (S r) (S n) (V (x2 + 2 + Z_of_nat m)::V x2::mapV head) x tail v0).
+  rewrite H2 in H3.
+  rewrite H3 in Hterm.
+  unfold ntarai.
+  simpl.
+  destruct (Z_le_dec (x2+2+Z_of_nat m) x2).
+  apply False_ind. omega.
+  exact Hterm.
+  auto.
+  simpl.
+  unfold mapV.
+  rewrite map_length.
+  auto.
+Qed.

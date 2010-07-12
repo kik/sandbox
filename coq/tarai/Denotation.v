@@ -95,6 +95,38 @@ Proof.
   auto with tarai.
 Qed.
 
+Lemma VdZ_split: forall u v w, VdZ_le (u++v) w ->
+  exists u', exists v', u' ++ v' = w /\ VdZ_le u u' /\ VdZ_le v v'.
+Proof.
+  induction u.
+  exists nil. exists w.
+  simpl in * |- *.
+  auto with tarai.
+  intros.
+  destruct w.
+  simpl in H. inversion H.
+  simpl in H. inversion H.
+  destruct (IHu  v w) as [u' [v' ?]]; auto.
+  exists (d::u'). exists v'.
+  constructor; auto.
+  rewrite <- app_comm_cons.
+  destruct H6. congruence.
+  constructor.
+  constructor; auto. tauto. tauto.
+Qed.
+
+Lemma VdZ_le_length: forall v w, VdZ_le v w -> length v = length w.
+Proof.
+  induction v.
+  intros.
+  inversion H.
+  auto.
+  intros.
+  inversion H.
+  simpl.
+  auto.
+Qed.
+
 Lemma tau_continuous: continuous_v tau.
 Proof.
   red.
