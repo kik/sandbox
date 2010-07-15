@@ -44,6 +44,16 @@ Proof.
    apply IHk with vec; auto.
 Qed.
 
+Lemma In_n_ex_ind: forall {A} k x (vec: list A),
+  k < length vec ->
+  (forall y, In_n k y vec -> x = y) ->
+  In_n k x vec.
+Proof.
+  intros.
+  destruct (In_n_exists k vec); auto.
+  rewrite (H0 x0); auto.
+Qed.
+
 Lemma In_n_map: forall {A B} (f: A->B) k (vec: list A) v v',
   In_n k v vec -> In_n k v' (map f vec) -> f v = v'.
 Proof.
@@ -142,6 +152,19 @@ Proof.
   apply gt_n_S.
   apply IHk with v.
   auto.
+Qed.
+
+Lemma In_n_map_r:  forall {A B} (f: A->B) k (vec: list A) v,
+  In_n k v (map f vec) -> exists v', f v' = v /\ In_n k v' vec.
+Proof.
+  intros.
+  destruct (In_n_exists k vec) as [v' ?].
+  apply In_n_length in H.
+  rewrite map_length in H.
+  auto.
+  exists v'.
+  constructor; auto.
+  apply In_n_map with k vec; auto.
 Qed.
 
 Lemma firstn_firstn: forall {A} n m (vec: list A), n <= m ->
