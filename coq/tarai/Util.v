@@ -104,8 +104,31 @@ Proof.
   auto.
 Qed.
 
+Lemma In_n_app: forall {A} (v w: list A) k x,
+  In_n k x v -> In_n k x (v++w).
+Proof.
+  induction v.
+  destruct k; contradiction.
+  intros.
+  rewrite <- app_comm_cons.
+  destruct k; simpl; auto.
+Qed.
+
+Lemma In_n_app_2: forall {A} (v w: list A) k x,
+  In_n k x (v ++ w) -> k < length v -> In_n k x v.
+Proof.
+  induction v.
+  intros.
+  apply False_ind. simpl in H0. omega.
+  intros.
+  destruct k.
+  exact H.
+  simpl in * |- *.
+  apply IHv with w; auto with arith.
+Qed.
+
 Lemma In_n_length: forall {A} k (vec: list A) v,
-  In_n k v vec -> length vec > k.
+  In_n k v vec -> k < length vec.
 Proof.
   induction k.
   intros.

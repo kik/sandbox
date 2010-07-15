@@ -65,6 +65,7 @@ Definition continuous (f: VdZ -> dZ) :=
 Definition continuous_v (f: VdZ -> VdZ) :=
   forall v w, VdZ_le v w -> VdZ_le (f v) (f w).
 
+
 Lemma sigma_continuous: continuous_v sigma.
 Proof.
   red.
@@ -306,4 +307,15 @@ Proof.
   intros.
   replace n' with (n + (n' - n))%nat by omega.
   apply ntarai_continuous_n_aux.
+Qed.
+
+Lemma ntarai_continuous_nv: forall n n' v x, (n <= n')%nat ->
+  ntarai n v = V x -> ntarai n' v = V x.
+Proof.
+  intros.
+  generalize (ntarai_continuous_n n n' v H).
+  rewrite H0.
+  intro.
+  inversion H1.
+  auto.
 Qed.
