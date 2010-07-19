@@ -5,17 +5,10 @@ Require Import Tarai_Base.
 Open Scope Z_scope.
 
 Inductive dZ_le: dZ -> dZ -> Prop :=
-| dZ_eq x : dZ_le x x
-| dZ_B  x : dZ_le B x.
+| dZ_le_refl x : dZ_le x x
+| dZ_le_B  x : dZ_le B x.
 
 Hint Constructors dZ_le: tarai.
-
-Lemma dZ_le_refl: forall a, dZ_le a a.
-Proof.
-  auto with tarai.
-Qed.
-
-Hint Resolve dZ_le_refl: tarai.
 
 Lemma dZ_le_trans: forall a b c, dZ_le a b -> dZ_le b c -> dZ_le a c.
 Proof.
@@ -51,13 +44,11 @@ Proof.
   apply IHv with w; auto.
 Qed.
 
-Lemma dZ_dec_le: forall a b, dZ_le a b -> dZ_le (dZ_dec a) (dZ_dec b).
-Proof.
-  intros.
-  destruct H; auto with tarai.
-Qed.
+Definition VVdZ := list VdZ.
 
-Hint Resolve dZ_dec_le: tarai.
+Inductive VVdZ_le: VVdZ -> VVdZ -> Prop :=
+| VVdZ_le_nil: VVdZ_le nil nil
+| VVdZ_le_const x xs y ys: VdZ_le x y -> VVdZ_le xs ys -> VVdZ_le (x::xs) (y::ys).
 
 Definition continuous (f: VdZ -> dZ) :=
   forall v w, VdZ_le v w -> dZ_le (f v) (f w).
@@ -65,6 +56,13 @@ Definition continuous (f: VdZ -> dZ) :=
 Definition continuous_v (f: VdZ -> VdZ) :=
   forall v w, VdZ_le v w -> VdZ_le (f v) (f w).
 
+Lemma dZ_dec_continuous: forall a b, dZ_le a b -> dZ_le (dZ_dec a) (dZ_dec b).
+Proof.
+  intros.
+  destruct H; auto with tarai.
+Qed.
+
+Hint Resolve dZ_dec_continuous: tarai.
 
 Lemma sigma_continuous: continuous_v sigma.
 Proof.
@@ -96,6 +94,7 @@ Proof.
   auto with tarai.
 Qed.
 
+(*
 Lemma VdZ_split: forall u v w, VdZ_le (u++v) w ->
   exists u', exists v', u' ++ v' = w /\ VdZ_le u u' /\ VdZ_le v v'.
 Proof.
@@ -115,6 +114,7 @@ Proof.
   constructor.
   constructor; auto. tauto. tauto.
 Qed.
+*)
 
 Lemma VdZ_le_length: forall v w, VdZ_le v w -> length v = length w.
 Proof.
@@ -155,12 +155,6 @@ Proof.
   auto with tarai.
 Qed.
 
-Definition VVdZ := list VdZ.
-
-Inductive VVdZ_le: VVdZ -> VVdZ -> Prop :=
-| VVdZ_le_nil: VVdZ_le nil nil
-| VVdZ_le_const x xs y ys: VdZ_le x y -> VVdZ_le xs ys -> VVdZ_le (x::xs) (y::ys).
-
 Lemma ntarai_make_aux_continuous: forall n v w, VdZ_le v w ->
   VVdZ_le (ntarai_make_aux v n) (ntarai_make_aux w n).
 Proof.
@@ -186,7 +180,7 @@ Proof.
   congruence.
 Qed.
 
-Lemma ntarai_make_map_continuous: forall f v w, continuous f ->
+Lemma map_continuous: forall f v w, continuous f ->
   VVdZ_le v w -> VdZ_le (map f v) (map f w).
 Proof.
   intros.
@@ -203,7 +197,7 @@ Proof.
   red.
   intros.
   apply H.
-  apply ntarai_make_map_continuous.
+  apply map_continuous.
   auto.
   apply ntarai_make_continuous.
   auto.
