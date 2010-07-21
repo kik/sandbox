@@ -184,7 +184,7 @@ Section Y_prop.
   Qed.
 
   Lemma Tarai_Y_continuous: forall r k v v' x,
-    Tarai_Y r k v x -> VdZ_le v v' -> Tarai_Y r k v' x.
+    Tarai_Y r k v x -> le v v' -> Tarai_Y r k v' x.
   Proof.
     intros.
     generalize (ntarai_continuous r v v' H0).
@@ -197,7 +197,7 @@ Section Y_prop.
   Qed.
 
   Lemma Tarai_Y_continuous_full: forall r r' k v v' x, r <= r' ->
-    Tarai_Y r k v x -> VdZ_le v v' -> Tarai_Y r' k v' x.
+    Tarai_Y r k v x -> le v v' -> Tarai_Y r' k v' x.
   Proof.
     intros.
     apply Tarai_Y_continuous_n with r; auto.
