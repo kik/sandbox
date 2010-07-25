@@ -223,6 +223,17 @@ Proof.
   exact H.
 Qed.
 
+Theorem ntarai_continuous_v: forall n v v' x, le v v' ->
+  ntarai n v = V x -> ntarai n v' = V x.
+Proof.
+  intros.
+  generalize (ntarai_continuous n v v' H).
+  rewrite H0.
+  intro.
+  inversion H1.
+  auto.
+Qed.
+
 Lemma Y_add: forall A n m (init: A) (recur: A -> A),
   Yn (n+m)%nat init recur = Yn n (Yn m init recur) recur.
 Proof.
@@ -236,7 +247,7 @@ Qed.
 Definition f_le `{aord: PreOrder a, bord: PreOrder b} (f g: a -> b) :=
   forall v, le (f v) (g v).
 
-Instance CFOrder `{aord: PreOrder a, bord: PreOrder b} : PreOrder (a -> b) := {
+Instance FOrder `{aord: PreOrder a, bord: PreOrder b} : PreOrder (a -> b) := {
   le := f_le
 }.
 Proof.

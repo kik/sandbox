@@ -2,11 +2,12 @@ Require Import Arith.
 Require Import Omega.
 Require Import List.
 
-Inductive In_n {A: Type} : nat -> A -> list A -> Prop :=
-| In_n_O x xs: In_n O x (x::xs)
-| In_n_S k y x xs: In_n k y xs -> In_n (S k) y (x::xs).
-
-Hint Constructors In_n: tarai.
+Fixpoint In_n {A} n x (v: list A) :=
+match v, n with
+| nil, _ => False
+| y::ys, O => x = y
+| y::ys, S m => In_n m x ys
+end.
 
 Lemma In_n_exists: forall {A} k (vec: list A),
   k < length vec -> exists v, In_n k v vec.
@@ -16,21 +17,25 @@ Proof.
   destruct vec.
   inversion H.
   exists a.
-  auto with tarai.
+  reflexivity.
   intros.
   destruct vec.
   inversion H.
   destruct (IHk vec).
   auto with arith.
   exists x.
-  auto with tarai.
+  exact H0.
 Qed.
 
 Lemma In_n_unique: forall {A} k (vec: list A) v v',
    In_n k v vec -> In_n k v' vec -> v = v'.
 Proof.
+   induction k.
+   destruct vec. contradiction.
+   congruence.
    intros.
-   induction H; inversion H0; auto.
+   destruct vec. contradiction.
+   eauto.
 Qed.
 
 Lemma In_n_intro: forall {A} k x (vec: list A),
@@ -45,38 +50,22 @@ Qed.
 
 Hint Resolve @In_n_intro: tarai.
 
-Lemma In_n_O_eq: forall {A} {vec: list A} {x y},
-  In_n O x (y::vec) -> x = y.
-Proof.
-  intros.
-  inversion H.
-  auto.
-Qed.
-
-Hint Resolve @In_n_O_eq: tarai.
-
-Lemma In_n_S_inv: forall {A} k (vec: list A) x y,
-  In_n (S k) x (y::vec) -> In_n k x vec.
-Proof.
-  intros.
-  inversion H.
-  auto.
-Qed.
-
-Hint Resolve @In_n_S_inv: tarai.
-
 Lemma In_n_length: forall {A} k (vec: list A) v,
   In_n k v vec -> k < length vec.
 Proof.
-  intros.
-  induction H; simpl; auto with arith.
+  induction k; destruct vec; try contradiction.
+  simpl. auto with arith.
+  simpl. intros.
+  specialize (IHk vec v H).
+  auto with arith.
 Qed.
 
 Lemma In_n_map_eq: forall {A B} (f: A->B) k (vec: list A) v v',
   In_n k v vec -> In_n k v' (map f vec) -> f v = v'.
 Proof.
-  intros.
-  induction H; inversion H0; auto.
+  induction k; destruct vec; try contradiction.
+  congruence.
+  exact (IHk vec).
 Qed.
 
 Lemma In_n_map: forall {A B} (f: A->B) k (vec: list A) v,
@@ -106,8 +95,9 @@ Qed.
 Lemma In_n_app: forall {A} (v w: list A) k x,
   In_n k x v -> In_n k x (v++w).
 Proof.
-  intros.
-  induction H; rewrite <- app_comm_cons; auto with tarai.
+  induction v; destruct k; try contradiction;
+    rewrite <- app_comm_cons; auto.
+  exact (IHv w k).
 Qed.
 
 Lemma In_n_unapp: forall {A} (v w: list A) k x,
@@ -118,11 +108,10 @@ Proof.
   inversion H0.
   intros.
   destruct k.
-  inversion H.
-  auto with tarai.
-  constructor.
-  inversion H.
-  apply IHv with w; auto with tarai arith.
+  exact H.
+  apply IHv with w.
+  exact H.
+  auto with arith.
 Qed.
 
 Lemma take_max: forall m (P: nat -> nat -> Prop),
