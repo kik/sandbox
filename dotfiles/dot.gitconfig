@@ -1,3 +1,7 @@
 [user]
         name = kik
         email = kik314@gmail.com
+[alias]
+	co = checkout
+	st = status
+	ci = commit
